@@ -36,7 +36,7 @@ def main(environ=api.UAT):
         headers = api.get_user_portal_headers(environ)
         cookies = api.get_user_portal_cookies(environ)
 
-        save_address_url = "{}/api/user/saveAddress".format(api.get_url(environ))
+        save_address_url = "{}/api/user/saveAddress".format(api.get_user_portal_url(environ))
         response = requests.post(save_address_url, json=payload, headers=headers, cookies=cookies)
 
         print response

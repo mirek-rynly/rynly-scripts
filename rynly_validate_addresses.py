@@ -45,7 +45,7 @@ def get_validated_address(environ, address_line, error_addresses):
         "zip": zipcode
     }
 
-    validation_url = "{}/api/hub/validateAddress".format(api.get_url(environ))
+    validation_url = "{}/api/hub/validateAddress".format(api.get_user_portal_url(environ))
     headers = api.get_user_portal_headers(environ)
     cookies = api.get_user_portal_cookies(environ)
 
