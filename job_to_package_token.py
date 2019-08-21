@@ -1,6 +1,6 @@
 import re
 import requests
-import rynly_api_utils as api
+import api_utils as api
 
 job_id = "2f80711a-daf8-42f7-befc-18d1346a2c1e"
 raw_response = requests.get(

@@ -1,6 +1,6 @@
 import re
 import requests
-import rynly_api_utils as api
+import api_utils as api
 
 job_numbers = []
 with open("/Users/mirek/competed_job_numbers.csv") as f:

@@ -1,5 +1,5 @@
 import requests
-import rynly_api_utils as api
+import api_utils as api
 
 DEFAULT_PHONE_NUM = '971-222-9649'
 FILE_PATH = "/Users/mirek/inspired_addresses.tsv"

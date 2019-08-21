@@ -8,7 +8,7 @@ Out: print list of items and descriptions
 from HTMLParser import HTMLParser
 import re
 import requests
-import rynly_api_utils as api
+import api_utils as api
 
 html_parser = HTMLParser()
 
