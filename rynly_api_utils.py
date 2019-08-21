@@ -53,15 +53,19 @@ def get_admin_dashboard_cookies(environ):
 
 def get_admin_dashboard_headers(environ):
     return {
-        "Accept": "application/json, text/plain, */*",
+        "Accept": "*/*",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "en-US,en;q=0.9,cs;q=0.8",
         "Connection": "keep-alive",
-        "Content-Type": "application/json;charset=UTF-8",
-        "Origin": get_user_portal_url(environ),
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Origin": "{}".format(get_admin_dashboard_url(environ)),
+        "Referer": "{}/Admin/Home/Jobs".format(get_admin_dashboard_url(environ)),
+        "Request-Context": "appId=cid-v1:b40138d5-f75d-4576-ba63-17f31d035d7e",
+        "Request-Id": "|FjOzL.s4DQp",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.100 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.100 Safari/537.36",
+        "X-Requested-With": "XMLHttpRequest"
     }
 
 
