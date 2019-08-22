@@ -1,7 +1,7 @@
 import json
 import requests
-import rynly_api_utils as api
-import rynly_validate_addresses as validation
+import api_utils as api
+import validate_addresses as validation
 
 
 def main(environ=api.UAT):
