@@ -1,4 +1,4 @@
-import local_api_config as config
+import api_config as config
 
 # Enums representing production vs UAT
 PROD = "PROD"

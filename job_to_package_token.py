@@ -14,7 +14,6 @@ html = raw_response.text
 
 regex = r"/Admin/Home/PackageDetail/([A-Z0-9]+)\""
 
-
 matches = re.finditer(regex, html, re.MULTILINE)
 for matchNum, match in enumerate(matches):
     print "{} {}".format(matchNum, match.group(1))
