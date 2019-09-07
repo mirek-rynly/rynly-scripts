@@ -16,7 +16,7 @@ IMPORT_FILEPATH = "/Users/mirek/job_mappings_temp_2.tsv"
 # EXPORT_FILEPATH = "/Users/mirek/package_to_job_mappings.tsv"
 EXPORT_FILEPATH = "/Users/mirek/package_to_job_mappings_temp.tsv"
 
-RUN_IN_PARALLEL = False
+RUN_IN_PARALLEL = False # careful no to overwhelm the DB
 ENVIRON = api.PROD
 
 def main():
