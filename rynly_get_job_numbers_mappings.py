@@ -18,13 +18,13 @@ EXPORT_FILEAPTH = "/Users/mirek/job_mappings_temp_2.tsv"
 # different order than code: compelted is first for early exit
 JOB_STATUSES = ["Completed", "Pending", "Open", "Assigned", "Started", "ReadyToOpen"]
 
-job_numbers = range(3030, 3071)
+job_numbers = range(3250, 3348)
 # job_numbers = [3036]
 
-def main():
+def main(environ=api.PROD):
     for job_number in job_numbers:
 
-        job_id = get_job_id(job_number)
+        job_id = get_job_id(job_number, environ)
         if not job_id:
             print "Failed to find job {}".format(job_number)
             continue
@@ -39,16 +39,17 @@ def main():
 
     print "DONE"
 
-def get_job_id(job_number):
+def get_job_id(job_number, environ):
     print "Searching for job {}".format(job_number)
-    for job_status in JOB_STATUSES:
+    for job_status in ["Completed", "Started"]:
+    # for job_status in JOB_STATUSES:
         data = get_data_payload(job_number, job_status)
 
         raw_response = requests.post(
-            "{}/Admin/Home/FilterJobs".format(api.get_admin_dashboard_url(api.PROD)),
+            "{}/Admin/Home/FilterJobs".format(api.get_admin_dashboard_url(environ)),
             data=data,
-            headers=api.get_admin_dashboard_headers(api.PROD),
-            cookies=api.get_admin_dashboard_cookies(api.PROD),
+            headers=api.get_admin_dashboard_headers(environ),
+            cookies=api.get_admin_dashboard_cookies(environ),
         )
 
         html = raw_response.text
