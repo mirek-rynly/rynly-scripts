@@ -1,3 +1,9 @@
+"""
+Load all (job number -> to job id) mappings givein in the import file
+For every job, find all the packages currently in that job
+Export a file with all (package tracking number -> job number) mappins
+"""
+
 import re
 import requests
 import api_utils as api
