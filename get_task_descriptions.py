@@ -12,7 +12,7 @@ import api_utils as api
 
 html_parser = HTMLParser()
 
-items = [254, 294, 245, 246, 268, 295, 300, 152, 279]
+items = [283,302, 303, 315, 320,332, 336, 337, 338, 339, 341]
 descriptions = []
 
 for item in items:
