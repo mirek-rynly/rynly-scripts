@@ -36,4 +36,31 @@ for (var key in uniq) {
   print(`${key}: ${uniq[key]}`);
 }
 
+// unwind example (online package entry per line)
+db.Jobs.aggregate([
+  {$match: {JobId: 18}},
+  {$unwind : "$Packages"},
+  {$project: {_id: 0, job_id: "$_id", job_number: "$JobId", package_db_id: "$Packages._id"}},
+]).pretty();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
