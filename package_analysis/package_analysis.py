@@ -150,11 +150,8 @@ print "missing job ids: {}".format(len(missing_job_ids))
 print ""
 
 missing_pickup_or_delivery = set()
-
 uniq_pickup_jobs = set()
 uniq_delivery_jobs = set()
-pickup_jobs_cost = 0
-delivery_jobs_cost = 0
 
 for p_id in package_by_id:
     if p_id not in package_id_to_pickup_job_id or p_id not in package_id_to_delivery_job_id:
@@ -169,14 +166,22 @@ for p_id in package_by_id:
     if not pickup_job_line or not delivery_job_line:
         raise Exception("No job entry corresponding to mapped job")
 
+    if pickup_job_id in shipper_job_ids or delivery_job_id in shipper_job_ids:
+        raise Exception("Should be no shipper jobs in pickup or final delivery jobs")
+
     uniq_pickup_jobs.add(pickup_job_id)
     uniq_delivery_jobs.add(delivery_job_id)
 
-    pickup_jobs_cost += utils.get_job_cost(pickup_job_line)
-    delivery_jobs_cost += utils.get_job_cost(delivery_job_line)
-
 print "Ignored b/c either pickup or delivery was missing: {}".format(len(missing_pickup_or_delivery))
 print ""
+
+pickup_jobs_cost = 0
+delivery_jobs_cost = 0
+for pickup_job_id in uniq_pickup_jobs:
+    pickup_jobs_cost += utils.get_job_cost(pickup_job_line)
+
+for delivery_job_id in uniq_delivery_jobs:
+    delivery_jobs_cost += utils.get_job_cost(delivery_job_line)
 
 num_pickup_jobs = len(uniq_pickup_jobs)
 num_delivery_jobs = len(uniq_delivery_jobs)
