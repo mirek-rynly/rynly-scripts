@@ -57,33 +57,54 @@ print ""
 package_id_to_pickup_job_id = {}
 package_id_to_delivery_job_id = {}
 
-multiple_pickup_jobs_by_package_id = {}
+for p_id, package_line in package_by_id.iteritems():
+    job_id = utils.get_job_id_from_package_line(package_by_id, p_id)
+    package_id_to_delivery_job_id[p_id] = job_id
+
 
 for p_id, j_ids in package_to_job_ids.iteritems():
     if len(set(j_ids)) != len(j_ids):
         raise Exception("Duplicate job ids: {}".format(j_ids))
 
-    # job_nums = [utils.get_job_number(job_by_id, j_id) for j_id in j_ids]
-
     for j_id in j_ids:
         j_line = job_by_id[j_id]
         j_num = utils.get_job_number(job_by_id, j_id)
 
-        if utils.is_delivery_job(j_line):
-            continue
+        # best way to determine delivery job is to look at the package line
+        # if utils.is_delivery_job(j_line):
+        #     # store the most recent delivery job
+        #     if p_id not in package_id_to_delivery_job_id:
+        #         package_id_to_delivery_job_id[p_id] = j_id
+        #     else:
+        #         # package was part of a hub-to-hub transfer
+        #         last_job_id = package_id_to_delivery_job_id[p_id]
+        #         last_job_date = utils.get_job_completed_date(job_by_id, last_job_id)
+        #         this_job_date = utils.get_job_completed_date(job_by_id, j_id)
+        #         if this_job_date > last_job_date:
+        #             # completion data is a good, but not guarenteed, proxy for the "last leg")
+        #             package_id_to_delivery_job_id[p_id] = j_id
 
-        else:
+        if not utils.is_delivery_job(j_line):
             # should be only one pickup job per package
             if p_id in package_id_to_pickup_job_id:
-                # raise Exception("Multiple pickup jobs for {}: {}".format(p_id, job_nums))/
-                if p_id not in multiple_pickup_jobs_by_package_id:
-                    earlier_job_num = utils.get_job_number(job_by_id, package_id_to_pickup_job_id[p_id])
-                    multiple_pickup_jobs_by_package_id[p_id] = [earlier_job_num]
-                multiple_pickup_jobs_by_package_id[p_id].append(j_num)
+                earlier_job_id = package_id_to_pickup_job_id[p_id]
+                raise Exception("Multiple pickup jobs for {}: {} and {}".format(p_id, earlier_job_id, j_id))
 
             package_id_to_pickup_job_id[p_id] = j_id
 
 
 
-print "MULTIPL PICKUP JOBS"
-print multiple_pickup_jobs_by_package_id
+
+fails = 0
+for p_id, dj_id in package_id_to_delivery_job_id.iteritems():
+    check_dj_id = package_id_to_delivery_job_id_check[p_id]
+    if dj_id != check_dj_id:
+        print "FAIL for package {} with number {}".format(p_id, utils.get_package_qr_code(package_by_id, p_id))
+        old_way_number = utils.get_job_number(job_by_id, dj_id)
+        check_way_number = utils.get_job_number(job_by_id, check_dj_id)
+        print "Timestamp way job ID: {}, Package db job ID: {}".format(old_way_number, check_way_number)
+        fails += 1
+        exit(0)
+
+print fails
+
