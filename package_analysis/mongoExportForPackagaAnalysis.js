@@ -30,8 +30,10 @@ db.Packages.find(
 );
 
 // export to CSV from command line
-// mongoexport --db rynlyproduction --collection Packages --type=csv --fields=_id,TrackingNumber,DateCreated,AmountPaid,JobId,IsExpedited > prod_packages.csv
+// mongoexport --db rynlyproduction --collection Packages --type=csv --fields=_id,TrackingNumber,DateCreated,AmountPaid,JobId,IsExpedited, > prod_packages.csv
 
+// export cancelled (did this later)
+// mongoexport --db rynlyproduction --collection Packages --type=csv --fields=_id,TrackingNumber,DateCreated,AmountPaid,JobId,IsExpedited,CancellationNote -q '{"CancellationNote": {"$ne": null}}' > prod_cancelled_packages.csv
 
 /////////////////////// jobs.csv
 db.Jobs.find(

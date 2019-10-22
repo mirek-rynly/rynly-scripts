@@ -1,54 +1,14 @@
-import os
+import package_utils as utils
 
-ANALYSIS_FOLDER = os.path.abspath("/Users/mirek/Desktop/rynly_job_analysis")
-
-package_by_id = {}
-#_id,TrackingNumber,DateCreated,AmountPaid,JobId,IsExpedited
-with open(os.path.join(ANALYSIS_FOLDER, "prod_packages.csv")) as f_p:
-    for line in f_p.read().splitlines()[1:]: # skip header
-        _id = line.split(",")[0]
-        package_by_id[_id] = line
-
-
-package_to_job_ids = {}
-job_to_package_ids = {}
-# job_db_id,JobId,package_db_id
-with open(os.path.join(ANALYSIS_FOLDER, "prod_package_to_job_mapping.csv")) as f_ptj:
-    for line in f_ptj.read().splitlines()[1:]:
-        j_id = line.split(",")[0]
-        p_id = line.split(",")[2]
-
-        if p_id not in package_to_job_ids:
-            package_to_job_ids[p_id] = []
-
-        if j_id not in job_to_package_ids:
-            job_to_package_ids[j_id] = []
-
-        package_to_job_ids[p_id].append(j_id)
-        job_to_package_ids[j_id].append(p_id)
-
-# ignore shipper jobs for all sets unless otherwise noted
-job_by_id = {}
-shipper_job_ids = set()
-nonshipper_delivery_job_ids = set()
-# _id,JobId,Type,TotalDistance,TrafficTotalTime,TrafficTotalDistance,TotalTime,ActualTotalTime,PayAmount,Shippers,DateCreated,DateCompleted,ContainsExpeditedPackage,
-with open(os.path.join(ANALYSIS_FOLDER, "prod_jobs.csv")) as f_j:
-    for line in f_j.read().splitlines()[1:]:
-        _id = line.split(",")[0]
-
-        if "ShipperId" in line:
-            shipper_job_ids.add(_id)
-            continue
-
-        job_by_id[_id] = line
-
-        if line.split(",")[2] == "1": # for Type, 0=pickup, 1=delivery
-            nonshipper_delivery_job_ids.add(_id)
-
+package_by_id = utils.get_package_by_id_map()
+job_by_id = utils.get_job_by_id_map()
+[package_to_job_ids, job_to_package_ids] = utils.get_package_to_jobs_and_job_to_packages()
+[shipper_job_ids, nonshipper_job_ids] = utils.get_shipper_and_nonshipper_job_sets(job_by_id)
+[_, nonshipper_delivery_job_ids] = utils.get_shipper_and_nonshipper_job_sets(job_by_id, True)
 
 # SANITY CHECK: looks like two package records don't quite agree
 # if len(package_by_id) != len(package_to_job_ids):
-#     print "Packages missing in package-to-job mapping:"
+#     print "Packages missing in package-to-job mapping ({} != {}):".format(len(package_by_id), len(package_to_job_ids))
 #     for p_id in package_by_id:
 #         if p_id not in package_to_job_ids:
 #             print p_id
@@ -58,8 +18,9 @@ with open(os.path.join(ANALYSIS_FOLDER, "prod_jobs.csv")) as f_j:
 #         if p_id not in package_by_id:
 #             print p_id
 
+
 num_packages = len(package_to_job_ids)
-num_total_nonshipper_jobs = len(job_by_id)
+num_total_nonshipper_jobs = len(nonshipper_job_ids)
 num_nonshipper_delivery_jobs = len(nonshipper_delivery_job_ids)
 print "Total packages: {}".format(len(package_to_job_ids))
 print "Total non-shipper jobs: {} ({} delivery)".format(num_total_nonshipper_jobs, num_nonshipper_delivery_jobs)
@@ -90,3 +51,39 @@ print ""
 # ROUGH PACKAGES PER JOB
 print "Packages per pickup job: {}".format(1.0 * num_packages / (num_total_nonshipper_jobs - num_nonshipper_delivery_jobs))
 print "Packages per delivery job: {}".format(1.0 * num_packages / num_nonshipper_delivery_jobs)
+print ""
+
+# EXACT PACKAGES PER JOB
+package_id_to_pickup_job_id = {}
+package_id_to_delivery_job_id = {}
+
+multiple_pickup_jobs_by_package_id = {}
+
+for p_id, j_ids in package_to_job_ids.iteritems():
+    if len(set(j_ids)) != len(j_ids):
+        raise Exception("Duplicate job ids: {}".format(j_ids))
+
+    # job_nums = [utils.get_job_number(job_by_id, j_id) for j_id in j_ids]
+
+    for j_id in j_ids:
+        j_line = job_by_id[j_id]
+        j_num = utils.get_job_number(job_by_id, j_id)
+
+        if utils.is_delivery_job(j_line):
+            continue
+
+        else:
+            # should be only one pickup job per package
+            if p_id in package_id_to_pickup_job_id:
+                # raise Exception("Multiple pickup jobs for {}: {}".format(p_id, job_nums))/
+                if p_id not in multiple_pickup_jobs_by_package_id:
+                    earlier_job_num = utils.get_job_number(job_by_id, package_id_to_pickup_job_id[p_id])
+                    multiple_pickup_jobs_by_package_id[p_id] = [earlier_job_num]
+                multiple_pickup_jobs_by_package_id[p_id].append(j_num)
+
+            package_id_to_pickup_job_id[p_id] = j_id
+
+
+
+print "MULTIPL PICKUP JOBS"
+print multiple_pickup_jobs_by_package_id
