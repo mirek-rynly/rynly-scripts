@@ -57,10 +57,34 @@ print ""
 package_id_to_pickup_job_id = {}
 package_id_to_delivery_job_id = {}
 
-for p_id, package_line in package_by_id.iteritems():
-    job_id = utils.get_job_id_from_package_line(package_by_id, p_id)
-    package_id_to_delivery_job_id[p_id] = job_id
+packages_without_job_entries = set()
+undelivered_packages = set() # these guys have a "pickup" job in their job entry
+missing_job_ids = set() # job listed as a package entry but not in jobs export
 
+for p_id, package_line in package_by_id.iteritems():
+    job_id_from_package = utils.get_job_id_from_package(package_by_id, p_id)
+    if not job_id_from_package:
+        # some packages don't have job id entries?
+        packages_without_job_entries.add(p_id)
+        continue
+
+
+    if job_id_from_package not in job_by_id:
+        missing_job_ids.add(job_id_from_package)
+        continue
+
+    # check that job is a delivery job
+    job_line = job_by_id[job_id_from_package]
+    if not utils.is_delivery_job(job_line):
+        undelivered_packages.add(p_id)
+        continue
+
+    package_id_to_delivery_job_id[p_id] = job_id_from_package
+
+# TODO: whats up with all these guys?
+print "job entryless: {}".format(len(packages_without_job_entries))
+print "undelivered: {}".format(len(undelivered_packages))
+print "missing job ids: {}".format(len(missing_job_ids))
 
 for p_id, j_ids in package_to_job_ids.iteritems():
     if len(set(j_ids)) != len(j_ids):
@@ -71,7 +95,10 @@ for p_id, j_ids in package_to_job_ids.iteritems():
         j_num = utils.get_job_number(job_by_id, j_id)
 
         # best way to determine delivery job is to look at the package line
-        # if utils.is_delivery_job(j_line):
+        # here we just sanity check
+        if utils.is_delivery_job(j_line):
+            continue
+
         #     # store the most recent delivery job
         #     if p_id not in package_id_to_delivery_job_id:
         #         package_id_to_delivery_job_id[p_id] = j_id
@@ -84,7 +111,7 @@ for p_id, j_ids in package_to_job_ids.iteritems():
         #             # completion data is a good, but not guarenteed, proxy for the "last leg")
         #             package_id_to_delivery_job_id[p_id] = j_id
 
-        if not utils.is_delivery_job(j_line):
+        else:
             # should be only one pickup job per package
             if p_id in package_id_to_pickup_job_id:
                 earlier_job_id = package_id_to_pickup_job_id[p_id]
@@ -93,18 +120,16 @@ for p_id, j_ids in package_to_job_ids.iteritems():
             package_id_to_pickup_job_id[p_id] = j_id
 
 
-
-
 fails = 0
-for p_id, dj_id in package_id_to_delivery_job_id.iteritems():
-    check_dj_id = package_id_to_delivery_job_id_check[p_id]
-    if dj_id != check_dj_id:
-        print "FAIL for package {} with number {}".format(p_id, utils.get_package_qr_code(package_by_id, p_id))
-        old_way_number = utils.get_job_number(job_by_id, dj_id)
-        check_way_number = utils.get_job_number(job_by_id, check_dj_id)
-        print "Timestamp way job ID: {}, Package db job ID: {}".format(old_way_number, check_way_number)
-        fails += 1
-        exit(0)
+# for p_id, dj_id in package_id_to_delivery_job_id.iteritems():
+#     check_dj_id = package_id_to_delivery_job_id_check[p_id]
+#     if dj_id != check_dj_id:
+#         print "FAIL for package {} with number {}".format(p_id, utils.get_package_qr_code(package_by_id, p_id))
+#         old_way_number = utils.get_job_number(job_by_id, dj_id)
+#         check_way_number = utils.get_job_number(job_by_id, check_dj_id)
+#         print "Timestamp way job ID: {}, Package db job ID: {}".format(old_way_number, check_way_number)
+#         fails += 1
+#         exit(0)
 
 print fails
 

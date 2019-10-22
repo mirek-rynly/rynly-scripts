@@ -34,7 +34,7 @@ def get_package_by_id_map(ignore_cancelled=True):
 
     return package_by_id
 
-def get_job_id_from_package_line(package_by_id, p_id):
+def get_job_id_from_package(package_by_id, p_id):
     return package_by_id[p_id].split(",")[4]
 
 def get_package_qr_code(package_by_id, p_id):
