@@ -24,7 +24,7 @@ num_total_nonshipper_jobs = len(nonshipper_job_ids)
 num_nonshipper_delivery_jobs = len(nonshipper_delivery_job_ids)
 print "Total packages: {}".format(len(package_to_job_ids))
 print "Total non-shipper jobs: {} ({} delivery)".format(num_total_nonshipper_jobs, num_nonshipper_delivery_jobs)
-print "Todal shipper jobs: {}".format(len(shipper_job_ids))
+print "Total shipper jobs: {}".format(len(shipper_job_ids))
 
 # JOB COST
 total_cost_no_shippers = 0
@@ -32,7 +32,7 @@ delivery_cost_no_shippers = 0
 for _id, job_line in job_by_id.iteritems():
 
     # _id,JobId,Type,TotalDistance,TrafficTotalTime,TrafficTotalDistance,TotalTime,ActualTotalTime,PayAmount,Shippers,DateCreated,DateCompleted,ContainsExpeditedPackage,
-    cost = int(job_line.split(",")[8])
+    cost = utils.get_job_cost(job_line)
     total_cost_no_shippers += cost
 
     if _id in nonshipper_delivery_job_ids:
@@ -57,38 +57,26 @@ print ""
 package_id_to_pickup_job_id = {}
 package_id_to_delivery_job_id = {}
 
-packages_without_job_entries = set()
-undelivered_packages = set() # these guys have a "pickup" job in their job entry
-missing_job_ids = set() # job listed as a package entry but not in jobs export
+# 1) USE JOB -> PACKAGE MAPPING FROM THE JOBS COLLECTION
+# This will let us categorize ALL pickup jobs and SOME delivery jobs
 
-for p_id, package_line in package_by_id.iteritems():
-    job_id_from_package = utils.get_job_id_from_package(package_by_id, p_id)
-    if not job_id_from_package:
-        # some packages don't have job id entries?
-        packages_without_job_entries.add(p_id)
-        continue
+# for these guys we'll use the package line to determine delivery the final job
+multi_job_packages = set()
 
-
-    if job_id_from_package not in job_by_id:
-        missing_job_ids.add(job_id_from_package)
-        continue
-
-    # check that job is a delivery job
-    job_line = job_by_id[job_id_from_package]
-    if not utils.is_delivery_job(job_line):
-        undelivered_packages.add(p_id)
-        continue
-
-    package_id_to_delivery_job_id[p_id] = job_id_from_package
-
-# TODO: whats up with all these guys?
-print "job entryless: {}".format(len(packages_without_job_entries))
-print "undelivered: {}".format(len(undelivered_packages))
-print "missing job ids: {}".format(len(missing_job_ids))
-
+packages_without_pickup_job = set()
 for p_id, j_ids in package_to_job_ids.iteritems():
     if len(set(j_ids)) != len(j_ids):
         raise Exception("Duplicate job ids: {}".format(j_ids))
+
+    # why do some packages not have pickup jobs??
+    has_pickup = False
+    for j_id in j_ids:
+        j_line = job_by_id[j_id]
+        if not utils.is_delivery_job(j_line):
+            has_pickup = True
+
+    if not has_pickup:
+        packages_without_pickup_job.add(p_id)
 
     for j_id in j_ids:
         j_line = job_by_id[j_id]
@@ -97,19 +85,17 @@ for p_id, j_ids in package_to_job_ids.iteritems():
         # best way to determine delivery job is to look at the package line
         # here we just sanity check
         if utils.is_delivery_job(j_line):
-            continue
+            if len(j_ids) > 2:
+                multi_job_packages.add(p_id)
+                continue
 
-        #     # store the most recent delivery job
-        #     if p_id not in package_id_to_delivery_job_id:
-        #         package_id_to_delivery_job_id[p_id] = j_id
-        #     else:
-        #         # package was part of a hub-to-hub transfer
-        #         last_job_id = package_id_to_delivery_job_id[p_id]
-        #         last_job_date = utils.get_job_completed_date(job_by_id, last_job_id)
-        #         this_job_date = utils.get_job_completed_date(job_by_id, j_id)
-        #         if this_job_date > last_job_date:
-        #             # completion data is a good, but not guarenteed, proxy for the "last leg")
-        #             package_id_to_delivery_job_id[p_id] = j_id
+            if not has_pickup:
+                # missing a pickup job, its not clear which delivery job is the right on
+                # so treat it like any other multi delivery job package
+                multi_job_packages.add(p_id)
+                continue
+
+            package_id_to_delivery_job_id[p_id] = j_id
 
         else:
             # should be only one pickup job per package
@@ -120,16 +106,79 @@ for p_id, j_ids in package_to_job_ids.iteritems():
             package_id_to_pickup_job_id[p_id] = j_id
 
 
-fails = 0
-# for p_id, dj_id in package_id_to_delivery_job_id.iteritems():
-#     check_dj_id = package_id_to_delivery_job_id_check[p_id]
-#     if dj_id != check_dj_id:
-#         print "FAIL for package {} with number {}".format(p_id, utils.get_package_qr_code(package_by_id, p_id))
-#         old_way_number = utils.get_job_number(job_by_id, dj_id)
-#         check_way_number = utils.get_job_number(job_by_id, check_dj_id)
-#         print "Timestamp way job ID: {}, Package db job ID: {}".format(old_way_number, check_way_number)
-#         fails += 1
-#         exit(0)
+# 1) USE JOB DATA STORED IN THE PACKAGE COLLECTION
+# This will let us categorize remaining delivery jobs
 
-print fails
+packages_without_job_entries = set()
+undelivered_packages = set() # these guys have a "pickup" job in their job entry
+missing_job_ids = set() # job listed as a package entry but not in jobs export
 
+for p_id, package_line in package_by_id.iteritems():
+    job_id_from_package = utils.get_job_id_from_package(package_by_id, p_id)
+
+    # some packages don't have job id entries?
+    if not job_id_from_package:
+        packages_without_job_entries.add(p_id)
+        continue
+
+    # some packages list job ids that don't exist in the packages collection?
+    if job_id_from_package not in job_by_id:
+        missing_job_ids.add(job_id_from_package)
+        continue
+
+    # check that job is a delivery job
+    job_line = job_by_id[job_id_from_package]
+    if not utils.is_delivery_job(job_line):
+        undelivered_packages.add(p_id)
+        continue
+
+    # if we've already categorized this one using job data, it should agree
+    if p_id in package_id_to_delivery_job_id:
+        prior_delivery_job_match = package_id_to_delivery_job_id[p_id]
+        if prior_delivery_job_match != job_id_from_package:
+            raise Exception("Current delivery job designation doesn't match existing")
+
+    package_id_to_delivery_job_id[p_id] = job_id_from_package
+
+
+# TODO: whats up with all these guys?
+print "Weird stuff"
+print "no pickup job: {}".format(len(packages_without_pickup_job))
+print "job entryless: {}".format(len(packages_without_job_entries))
+print "undelivered: {}".format(len(undelivered_packages))
+print "missing job ids: {}".format(len(missing_job_ids))
+print ""
+
+missing_pickup_or_delivery = set()
+
+uniq_pickup_jobs = set()
+uniq_delivery_jobs = set()
+pickup_jobs_cost = 0
+delivery_jobs_cost = 0
+
+for p_id in package_by_id:
+    if p_id not in package_id_to_pickup_job_id or p_id not in package_id_to_delivery_job_id:
+        missing_pickup_or_delivery.add(p_id)
+        continue
+
+    pickup_job_id = package_id_to_pickup_job_id[p_id]
+    delivery_job_id = package_id_to_delivery_job_id[p_id]
+
+    pickup_job_line = job_by_id[pickup_job_id]
+    delivery_job_line = job_by_id[delivery_job_id]
+    if not pickup_job_line or not delivery_job_line:
+        raise Exception("No job entry corresponding to mapped job")
+
+    uniq_pickup_jobs.add(pickup_job_id)
+    uniq_delivery_jobs.add(delivery_job_id)
+
+    pickup_jobs_cost += utils.get_job_cost(pickup_job_line)
+    delivery_jobs_cost += utils.get_job_cost(delivery_job_line)
+
+print "Ignored b/c either pickup or delivery was missing: {}".format(len(missing_pickup_or_delivery))
+print ""
+
+num_pickup_jobs = len(uniq_pickup_jobs)
+num_delivery_jobs = len(uniq_delivery_jobs)
+print "Number of jobs: total={}, pickup={}, delivery={}".format(num_pickup_jobs + num_delivery_jobs, num_pickup_jobs, num_delivery_jobs)
+print "Total cost of jobs: total={}, pickup={}, delivery={}".format(pickup_jobs_cost + delivery_jobs_cost, pickup_jobs_cost, delivery_jobs_cost)

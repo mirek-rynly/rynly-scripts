@@ -77,6 +77,9 @@ def get_shipper_and_nonshipper_job_sets(job_by_id_map, delivery_only=False):
 def is_delivery_job(job_line):
     return job_line.split(",")[2] == "1" # for Type, 0=pickup, 1=delivery
 
+def get_job_cost(job_line):
+    return int(job_line.split(",")[8])
+
 # input file format:
 # job_db_id,JobId,package_db_id
 def get_package_to_jobs_and_job_to_packages(ignore_cancelled=True):
