@@ -42,8 +42,6 @@ def get_package_qr_code(package_by_id, p_id):
 
 def get_job_by_id_map():
     job_by_id = {}
-
-    print "READING PROD JOBS FILE"
     # _id,JobId,Type,TotalDistance,TrafficTotalTime,TrafficTotalDistance,TotalTime,ActualTotalTime,PayAmount,Shippers,DateCreated,DateCompleted,ContainsExpeditedPackage,
     with open(os.path.join(ANALYSIS_FOLDER, "prod_jobs.csv")) as f_j:
         for line in f_j.read().splitlines()[1:]:
