@@ -1,18 +1,19 @@
 import package_utils as utils
+import bad_data
 
 def main():
     package_by_id = utils.get_package_by_id_map()
     job_by_id = utils.get_job_by_id_map()
     [package_to_job_ids, _] = utils.get_package_to_jobs_and_job_to_packages()
     [shipper_job_ids, _] = utils.get_shipper_and_nonshipper_job_sets(job_by_id)
-    hub_dropoff_packages = utils.get_hub_dropoff_packages()
-    admin_checked_in_packages = utils.get_admin_checked_in_packages()
-    admin_delivered_packages = utils.get_admin_delivered_packages()
+    hub_dropoff_packages = bad_data.get_hub_dropoff_packages()
+    admin_checked_in_packages = bad_data.get_admin_checked_in_packages()
+    admin_delivered_packages = bad_data.get_admin_delivered_packages()
 
     package_id_to_pickup_job_id = {}
     package_id_to_delivery_job_id = {}
 
-    # 1) USE JOB -> PACKAGE MAPPING FROM THE JOBS COLLECTION
+    # 1) USE JOB<->PACKAGE MAPPING FROM THE JOBS COLLECTION
     # This will let us categorize ALL pickup jobs and SOME delivery jobs
 
     # for these guys we'll use the package line to determine delivery the final job
@@ -71,8 +72,8 @@ def main():
     for p_id, _ in package_by_id.iteritems():
         job_id_from_package = utils.get_job_id_from_package(package_by_id, p_id)
 
-        # some packages don't have job id entries?
-        if not job_id_from_package and not admin_delivered_packages:
+        # some packages don't have a value in the "job id" field?
+        if not job_id_from_package:
 
             # if an admin manually managed the package it won't have a any job entries
             if p_id in admin_delivered_packages and p_id in admin_checked_in_packages:
@@ -81,12 +82,13 @@ def main():
             packages_without_job_entries.add(p_id)
             continue
 
-        # some packages list job ids that don't exist in the packages collection?
+        # some packages list job ids that don't exist in the jobs collection?
         if job_id_from_package not in job_by_id:
             missing_job_ids.add(job_id_from_package)
             continue
 
-        # check that job is a delivery job
+        # check that job is a delivery job (the job entry should be the last job associated
+        # with a package, which should always be delivery)
         job_line = job_by_id[job_id_from_package]
         if not utils.is_delivery_job(job_line):
 
@@ -110,7 +112,12 @@ def main():
     print "Weird stuff:"
     print "Package has no pickup job in Jobs collection: {}".format(len(packages_without_pickup_job))
     print "Package not tagged with any jobs: {}".format(len(packages_without_job_entries))
+    print packages_without_job_entries
+
+    # This seem like legit bad data, around 2018 time range?
     print "Package has a pickup job entry in the Packages collection: {}".format(len(undelivered_packages))
+
+    # All but one of the below was completed out of system, corresponding jobs were probably deleted
     print "Job is listed in Package collection but missing in Jobs collection: {}".format(len(missing_job_ids))
     print ""
 
