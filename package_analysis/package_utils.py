@@ -20,8 +20,89 @@ def get_canceled_packages_set():
 
     return cancelled_packages
 
+
 # input file format:
-#_id,TrackingNumber,DateCreated,AmountPaid,JobId,IsExpedited
+# _id,Changes.0.Text,Changes.0.AdminChange,Changes.1.Text,Changes.1.AdminChange,Changes.2.Text,Changes.2.AdminChange,Changes.3.Text,Changes.3.AdminChange,Changes.4.Text,Changes.4.AdminChange,Changes.5.Text,Changes.5.AdminChange,Changes.6.Text,Changes.6.AdminChange,Changes.7.Text,Changes.7.AdminChangeChanges.8.Text,Changes.8.AdminChange,Changes.9.Text,Changes.9.AdminChange
+def get_hub_dropoff_packages():
+    hub_dropoff_packages = set()
+    with open(os.path.join(ANALYSIS_FOLDER, "package_changes", "package_changes.csv")) as f:
+        for line in f.read().splitlines()[1:]: # skip header
+            _id = line.split(",")[0]
+            change_1 = line.split(",")[1]
+            change_2 = line.split(",")[3]
+            if change_1 == "Package Created" and change_2 == "Package Checked In":
+                hub_dropoff_packages.add(_id)
+
+    return hub_dropoff_packages
+
+
+def get_admin_checked_in_packages():
+    admin_checked_in_packages = set()
+    with open(os.path.join(ANALYSIS_FOLDER, "package_changes", "package_changes.csv")) as f:
+        for line in f.read().splitlines()[1:]: # skip header
+            _id = line.split(",")[0]
+            change_2 = line.split(",")[3]
+            change_2_is_admin = line.split(",")[4]
+            if change_2 == "Package Picked By Driver" and change_2_is_admin == "true":
+                admin_checked_in_packages.add(_id)
+
+    # these jobs were created before we started tracking whether something was an admin change
+    probably_admin_changes = ['859e7186-df59-4d29-afb9-026d34c9017f', '91508023-af37-46a8-a7cf-8e9ef27206db', 'b27ac951-3722-4909-876f-eb67a0d63b09', 'ab32a69b-8401-4928-a000-05374355621b', '9907ae2a-919e-4f85-93b5-7265dcf38c5a']
+    admin_checked_in_packages.update(probably_admin_changes)
+
+    return admin_checked_in_packages
+
+
+def get_admin_delivered_packages():
+    admin_delivered_packages = set()
+    with open(os.path.join(ANALYSIS_FOLDER, "package_changes", "package_changes.csv")) as f:
+        header_line = f.readline()
+        max_changes = int(header_line.split(".")[-2]) # user header to determine number of "changes" columns
+
+        if header_line.split(",")[-1] != "Changes.{}.AdminChange\n".format(max_changes):
+            raise Exception("Header format logic wrong")
+
+        for line in f.read().splitlines():
+            _id = line.split(",")[0]
+
+            # find last package delivered change
+            change_N_text = None
+            change_N_is_admin = None
+            for i in range(max_changes, -1, -1): # e.g. 9,8,...,0
+                text_index = 2 * i + 1
+                is_admin_index = 2 * i + 2
+
+                change_N_text = line.split(",")[text_index]
+                change_N_is_admin = line.split(",")[is_admin_index]
+
+                if change_N_text == "Package Delivered":
+                    break
+
+            if not change_N_text:
+                raise Exception("Package never got delivered?")
+
+            if change_N_is_admin == "true":
+                admin_delivered_packages.add(_id)
+
+    return admin_delivered_packages
+
+get_admin_delivered_packages()
+
+# input file format:
+# _id,HubId
+def get_job_to_hub_id_map():
+    job_to_hub_id = {}
+    with open(os.path.join(ANALYSIS_FOLDER, "hubs", "prod_hubs_by_job.csv")) as f:
+        for line in f.read().splitlines()[1:]: # skip header
+            job_id = line.split(",")[0]
+            hub_id = line.split(",")[1]
+            job_to_hub_id[job_id] = hub_id
+
+    return job_to_hub_id
+
+
+# input file format:
+# _id,TrackingNumber,DateCreated,AmountPaid,JobId,IsExpedited
 def get_package_by_id_map(ignore_cancelled=True):
     package_by_id = {}
     cancelled_packages = get_canceled_packages_set() if ignore_cancelled else None
@@ -43,8 +124,8 @@ def get_package_qr_code(package_by_id, p_id):
 def get_job_by_id_map():
     job_by_id = {}
     # _id,JobId,Type,TotalDistance,TrafficTotalTime,TrafficTotalDistance,TotalTime,ActualTotalTime,PayAmount,Shippers,DateCreated,DateCompleted,ContainsExpeditedPackage,
-    with open(os.path.join(ANALYSIS_FOLDER, "prod_jobs.csv")) as f_j:
-        for line in f_j.read().splitlines()[1:]:
+    with open(os.path.join(ANALYSIS_FOLDER, "prod_jobs.csv")) as f:
+        for line in f.read().splitlines()[1:]:
             _id = line.split(",")[0]
             if _id in JOB_IDS_TO_IGNORE:
                 continue
@@ -71,7 +152,6 @@ def get_shipper_and_nonshipper_job_sets(job_by_id_map, delivery_only=False):
 
     return [shipper_job_ids, nonshipper_job_ids]
 
-
 def is_delivery_job(job_line):
     return job_line.split(",")[2] == "1" # for Type, 0=pickup, 1=delivery
 
@@ -84,8 +164,8 @@ def get_package_to_jobs_and_job_to_packages(ignore_cancelled=True):
     package_to_job_ids = {}
     job_to_package_ids = {}
     cancelled_packages = get_canceled_packages_set() if ignore_cancelled else None
-    with open(os.path.join(ANALYSIS_FOLDER, "prod_package_to_job_mapping.csv")) as f_ptj:
-        for line in f_ptj.read().splitlines()[1:]:
+    with open(os.path.join(ANALYSIS_FOLDER, "prod_package_to_job_mapping.csv")) as f:
+        for line in f.read().splitlines()[1:]:
             j_id = line.split(",")[0]
             p_id = line.split(",")[2]
 

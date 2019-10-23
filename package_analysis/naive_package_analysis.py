@@ -20,16 +20,22 @@ job_by_id = utils.get_job_by_id_map()
 
 
 num_packages = len(package_to_job_ids)
+print "Total packages: {}".format(len(package_to_job_ids))
+print ""
+
 num_total_nonshipper_jobs = len(nonshipper_job_ids)
 num_nonshipper_delivery_jobs = len(nonshipper_delivery_job_ids)
-print "Total packages: {}".format(len(package_to_job_ids))
-print "Total non-shipper jobs: {} ({} delivery)".format(num_total_nonshipper_jobs, num_nonshipper_delivery_jobs)
+print "Numer of non-shipper jobs: total = {}, pickup = {}, delivery = {}".format(num_total_nonshipper_jobs, num_nonshipper_delivery_jobs, num_total_nonshipper_jobs - num_nonshipper_delivery_jobs)
 print "Total shipper jobs: {}".format(len(shipper_job_ids))
+print ""
 
 # JOB COST
 total_cost_no_shippers = 0
 delivery_cost_no_shippers = 0
 for _id, job_line in job_by_id.iteritems():
+
+    if _id in shipper_job_ids:
+        continue
 
     # _id,JobId,Type,TotalDistance,TrafficTotalTime,TrafficTotalDistance,TotalTime,ActualTotalTime,PayAmount,Shippers,DateCreated,DateCompleted,ContainsExpeditedPackage,
     cost = utils.get_job_cost(job_line)
